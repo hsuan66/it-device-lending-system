@@ -1,0 +1,18 @@
+# .NET 編譯產物
+bin/
+obj/
+
+# Visual Studio 個人設定
+.vs/
+
+# 前端套件與打包輸出
+node_modules/
+dist/
+
+# 環境變數
+.env
+.env.*
+!.env.example
+
+# 編輯器
+.vscode/*

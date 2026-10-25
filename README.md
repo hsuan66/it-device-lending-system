@@ -111,3 +111,30 @@ SQL 腳本放在 `DB/`：
 | GET | `/api/EquipmentBorrowRecord` | 查詢借用歷史 | 後端 SQL |
 | POST | `/api/EquipmentBorrowRecord` | 新增借用紀錄 | `sp_borrow_record_create` |
 | POST | `/api/EquipmentBorrowRecord/{id}/Return` | 歸還設備 | `sp_borrow_record_return` |
+
+查詢借用歷史可帶篩選參數（都可省略），例如 `GET /api/EquipmentBorrowRecord?equipmentId=1&borrowerName=王&status=2`：
+
+| 參數 | 說明 |
+|------|------|
+| `equipmentId` | 設備 ID |
+| `borrowerName` | 借用人姓名，部分符合即可 |
+| `status` | 借用狀態代碼（見下表） |
+
+借用狀態由歸還時間、預計歸還時間推算，資料表沒有狀態欄位：
+
+| 代碼 | 狀態 | 條件 |
+|------|------|------|
+| 1 | 借用中 | 尚未歸還，且尚未超過預計歸還時間 |
+| 2 | 逾期 | 尚未歸還，且已超過預計歸還時間 |
+| 3 | 已歸還 | 有實際歸還時間 |
+
+新增借用紀錄的 request body：
+
+| 欄位 | 必填 | 說明 |
+|------|------|------|
+| `equipmentId` | 是 | 設備 ID |
+| `borrowerName` | 是 | 借用人姓名，最多 50 字 |
+| `expectReturnTime` | 是 | 預計歸還時間，例如 `2026-11-02T18:00:00+08:00` |
+| `borrowTime` | 否 | 實際借出時間，不傳代表現在 |
+
+歸還設備不需要 request body，歸還時間為呼叫當下。

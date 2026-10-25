@@ -1,8 +1,21 @@
-using Scalar.AspNetCore; // 新增
+using Scalar.AspNetCore;
+using Npgsql;
+using DeviceLending.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+// 資料庫連線：開發時從 user-secrets 讀取，正式環境從環境變數讀取
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException("找不到連線字串 ConnectionStrings:Default");
+
+// NpgsqlDataSource 管理連線池，整個程式共用一個
+builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
+
+// 錯誤處理：資料庫自訂錯誤代碼轉成 HTTP 狀態碼，回傳格式統一用 ProblemDetails
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<PostgresExceptionHandler>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -20,6 +33,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

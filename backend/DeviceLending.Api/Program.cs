@@ -1,6 +1,8 @@
 using Scalar.AspNetCore;
 using Npgsql;
 using DeviceLending.Api.Infrastructure;
+using DeviceLending.Api.Data;
+using DeviceLending.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +18,10 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
 // 錯誤處理：資料庫自訂錯誤代碼轉成 HTTP 狀態碼，回傳格式統一用 ProblemDetails
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<PostgresExceptionHandler>();
+
+// Repository 與 Service：每個 HTTP 請求建立一份
+builder.Services.AddScoped<IEquipmentTypeRepository, EquipmentTypeRepository>();
+builder.Services.AddScoped<IEquipmentTypeService, EquipmentTypeService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

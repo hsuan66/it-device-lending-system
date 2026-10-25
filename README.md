@@ -78,21 +78,21 @@ SQL 腳本放在 `DB/`：
 
 | Method | URL | 說明 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/type/equipment` | 取得所有設備類型 | 後端 SQL |
+| GET | `/api/Type/Equipment` | 取得所有設備類型 | 後端 SQL |
 
 ### 設備
 
 | Method | URL | 說明 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/equipment` | 查詢設備清單 | 後端 SQL |
-| POST | `/api/equipment` | 新增設備 | `sp_equipment_create` |
-| PUT | `/api/equipment/{id}` | 修改設備 | `sp_equipment_update` |
-| DELETE | `/api/equipment/{id}` | 刪除設備（軟刪除）| `sp_equipment_delete` |
+| GET | `/api/Equipment` | 查詢設備清單 | 後端 SQL |
+| POST | `/api/Equipment` | 新增設備 | `sp_equipment_create` |
+| PUT | `/api/Equipment/{id}` | 修改設備 | `sp_equipment_update` |
+| DELETE | `/api/Equipment/{id}` | 刪除設備（軟刪除）| `sp_equipment_delete` |
 
 ### 借用紀錄
 
 | Method | URL | 說明 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/equipment/borrowRecord` | 查詢借用歷史 | 後端 SQL |
-| POST | `/api/equipment/borrowRecord` | 新增借用紀錄 | `sp_borrow_record_create` |
-| POST | `/api/equipment/borrowRecords/{id}/return` | 歸還設備 | `sp_borrow_record_return` |
+| GET | `/api/EquipmentBorrowRecord` | 查詢借用歷史 | 後端 SQL |
+| POST | `/api/EquipmentBorrowRecord` | 新增借用紀錄 | `sp_borrow_record_create` |
+| POST | `/api/EquipmentBorrowRecord/{id}/Return` | 歸還設備 | `sp_borrow_record_return` |

@@ -54,27 +54,45 @@
 
 ## 如何起動前端、後端、資料庫
 
+### 資料庫
+
+SQL 腳本放在 `DB/`：
+
+| 檔案 | 內容 |
+|------|------|
+| `01_create_database.sql` | 建立資料庫 `device_lending` |
+| `02_ddl.sql` | 資料表、約束、索引 |
+| `03_dml_seed.sql` | 初始資料／測試資料 |
+| `04_procedures.sql` | API 使用的異動預存程序（PROCEDURE） |
+
+建置步驟（以 pgAdmin 為例，每個檔案打開後整份執行即可）：
+
+1. 連上 `postgres` 資料庫，開 Query Tool 執行 `01_create_database.sql`
+2. 切換到 `device_lending` 資料庫，依序執行 `02_ddl.sql` → `03_dml_seed.sql` → `04_procedures.sql`
+
+之後只修改預存程序時，重跑 `04` 即可；想清空資料重新建立，重跑 `02` ～ `04`。
+
 ## API 說明
 
 ### 類型
 
-| Method | URL | 說明 |
-|--------|-----|------|
-| GET | `/api/type/equipment` | 取得所有設備類型 |
+| Method | URL | 說明 | 資料庫存取 |
+|--------|-----|------|------|
+| GET | `/api/type/equipment` | 取得所有設備類型 | 後端 SQL |
 
 ### 設備
 
-| Method | URL | 說明 |
-|--------|-----|------|
-| GET | `/api/equipment` | 查詢設備清單 |
-| POST | `/api/equipment` | 新增設備 |
-| PUT | `/api/equipment/{id}` | 修改設備 |
-| DELETE | `/api/equipment/{id}` | 刪除設備（軟刪除）|
+| Method | URL | 說明 | 資料庫存取 |
+|--------|-----|------|------|
+| GET | `/api/equipment` | 查詢設備清單 | 後端 SQL |
+| POST | `/api/equipment` | 新增設備 | `sp_equipment_create` |
+| PUT | `/api/equipment/{id}` | 修改設備 | `sp_equipment_update` |
+| DELETE | `/api/equipment/{id}` | 刪除設備（軟刪除）| `sp_equipment_delete` |
 
 ### 借用紀錄
 
-| Method | URL | 說明 |
-|--------|-----|------|
-| GET | `/api/equipment/borrowRecord` | 查詢借用歷史 |
-| POST | `/api/equipment/borrowRecord` | 新增借用紀錄 |
-| POST | `/api/equipment/borrowRecords/{id}/return` | 歸還設備 |
+| Method | URL | 說明 | 資料庫存取 |
+|--------|-----|------|------|
+| GET | `/api/equipment/borrowRecord` | 查詢借用歷史 | 後端 SQL |
+| POST | `/api/equipment/borrowRecord` | 新增借用紀錄 | `sp_borrow_record_create` |
+| POST | `/api/equipment/borrowRecords/{id}/return` | 歸還設備 | `sp_borrow_record_return` |

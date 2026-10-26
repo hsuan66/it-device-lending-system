@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getEquipmentList } from '@/api/equipment'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, Edit } from '@element-plus/icons-vue'
+import EquipmentFormDialog from '@/components/EquipmentFormDialog.vue'
+import { deleteEquipment, getEquipmentList } from '@/api/equipment'
 import { getEquipmentTypes } from '@/api/equipmentType'
 import {
   EquipmentStatus,
@@ -71,6 +73,16 @@ const pagedEquipmentList = computed(() => {
 })
 
 /**
+ * 新增／修改設備的對話框是否顯示
+ */
+const formDialogVisible = ref(false)
+
+/**
+ * 對話框要修改的設備；null 代表新增
+ */
+const editingEquipment = ref<Equipment | null>(null)
+
+/**
  * 載入設備類型，給篩選的下拉選單使用
  * @returns 沒有回傳值；失敗時顯示錯誤訊息
  */
@@ -84,18 +96,71 @@ async function loadEquipmentTypes() {
 
 /**
  * 依目前的篩選條件載入設備清單
+ * @param keepPage 是否停留在目前的頁碼；新增、修改、刪除後重新載入時傳 true
  * @returns 沒有回傳值；失敗時顯示錯誤訊息
  */
-async function loadEquipmentList() {
+async function loadEquipmentList(keepPage = false) {
   loading.value = true
   try {
     equipmentList.value = await getEquipmentList(query)
-    // 篩選條件可能變了，回到第 1 頁
-    currentPage.value = 1
+
+    if (keepPage) {
+      // 刪除後總頁數可能變少，頁碼不能超過最後一頁
+      const lastPage = Math.max(1, Math.ceil(equipmentList.value.length / pageSize))
+      currentPage.value = Math.min(currentPage.value, lastPage)
+    } else {
+      // 篩選條件可能變了，回到第 1 頁
+      currentPage.value = 1
+    }
   } catch (error) {
     ElMessage.error(toErrorMessage(error))
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 打開新增設備的對話框
+ * @returns 沒有回傳值
+ */
+function openCreateDialog() {
+  editingEquipment.value = null
+  formDialogVisible.value = true
+}
+
+/**
+ * 打開修改設備的對話框
+ * @param equipment 要修改的設備
+ * @returns 沒有回傳值
+ */
+function openEditDialog(equipment: Equipment) {
+  editingEquipment.value = equipment
+  formDialogVisible.value = true
+}
+
+/**
+ * 確認後刪除設備（軟刪除）
+ * @param equipment 要刪除的設備
+ * @returns 沒有回傳值；按取消時不做事，失敗時顯示錯誤訊息
+ */
+async function handleDelete(equipment: Equipment) {
+  try {
+    await ElMessageBox.confirm(
+      `確定要刪除「${equipment.assetCode} ${equipment.name}」嗎？`,
+      '刪除設備',
+      { type: 'warning', confirmButtonText: '刪除', cancelButtonText: '取消' },
+    )
+  } catch {
+    // 按取消或關閉確認框
+    return
+  }
+
+  try {
+    await deleteEquipment(equipment.id)
+    ElMessage.success('刪除成功')
+    await loadEquipmentList(true)
+  } catch (error) {
+    ElMessage.error(toErrorMessage(error))
   }
 }
 
@@ -117,10 +182,15 @@ onMounted(() => {
 
 <template>
   <el-card shadow="never">
-    <template #header>設備管理</template>
+    <template #header>
+      <div class="card-header">
+        <span>設備管理</span>
+        <el-button type="primary" @click="openCreateDialog">新增設備</el-button>
+      </div>
+    </template>
 
     <!-- 篩選條件：按 Enter 或「查詢」都會重新載入 -->
-    <el-form :model="query" inline class="filter-form" @submit.prevent="loadEquipmentList">
+    <el-form :model="query" inline class="filter-form" @submit.prevent="loadEquipmentList()">
       <el-form-item label="設備類型">
         <el-select v-model="query.typeId" placeholder="全部" clearable class="filter-select">
           <el-option
@@ -168,6 +238,44 @@ onMounted(() => {
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="100" align="center" fixed="right">
+        <template #default="{ row }">
+          <!--
+            el-tooltip 在滑鼠移上去時顯示文字說明，aria-label 給螢幕閱讀器使用
+            按鈕外面包一層 span：停用的按鈕不會觸發滑鼠事件，tooltip 要掛在 span 上才顯示得出來
+          -->
+          <div class="row-actions">
+            <el-tooltip content="修改" placement="top">
+              <span>
+                <el-button
+                  link
+                  type="primary"
+                  :icon="Edit"
+                  aria-label="修改"
+                  @click="openEditDialog(row as Equipment)"
+                />
+              </span>
+            </el-tooltip>
+
+            <!-- 借用中、逾期的設備不能刪除；後端也會擋，這裡先停用按鈕並說明原因 -->
+            <el-tooltip
+              :content="(row as Equipment).status === EquipmentStatus.Available ? '刪除' : '借用中的設備不能刪除'"
+              placement="top"
+            >
+              <span>
+                <el-button
+                  link
+                  type="danger"
+                  :icon="Delete"
+                  aria-label="刪除"
+                  :disabled="(row as Equipment).status !== EquipmentStatus.Available"
+                  @click="handleDelete(row as Equipment)"
+                />
+              </span>
+            </el-tooltip>
+          </div>
+        </template>
+      </el-table-column>
     </el-table>
 
     <!-- 前端分頁：total 是完整清單的筆數，切換頁碼時 pagedEquipmentList 會自動更新 -->
@@ -179,12 +287,38 @@ onMounted(() => {
       background
       class="pagination"
     />
+
+    <EquipmentFormDialog
+      v-model="formDialogVisible"
+      :equipment="editingEquipment"
+      :equipment-types="equipmentTypes"
+      @saved="loadEquipmentList(true)"
+    />
   </el-card>
 </template>
 
 <style scoped>
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .filter-select {
   width: 160px;
+}
+
+/* 操作欄的兩個 icon 按鈕：外面包了 span，Element Plus 預設的按鈕間距會失效，改用 gap */
+.row-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+/* icon 從預設的 14px（跟著按鈕字體）放大到 18px */
+.row-actions :deep(.el-icon) {
+  font-size: 18px;
 }
 
 .pagination {

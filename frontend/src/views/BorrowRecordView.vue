@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import { getBorrowRecordList } from '@/api/borrowRecord'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getBorrowRecordList, returnEquipment } from '@/api/borrowRecord'
 import { getEquipmentList } from '@/api/equipment'
 import {
   BorrowRecordStatus,
@@ -85,10 +85,11 @@ async function loadEquipmentOptions() {
 }
 
 /**
- * 依目前的篩選條件載入借用紀錄，並回到第 1 頁
+ * 依目前的篩選條件載入借用紀錄
+ * @param keepPage 是否停留在目前的頁碼；歸還後重新載入時傳 true
  * @returns 沒有回傳值；失敗時顯示錯誤訊息
  */
-async function loadBorrowRecordList() {
+async function loadBorrowRecordList(keepPage = false) {
   loading.value = true
   try {
     borrowRecordList.value = await getBorrowRecordList({
@@ -96,11 +97,45 @@ async function loadBorrowRecordList() {
       // 只有空白時視為不篩選
       borrowerName: query.borrowerName?.trim() || undefined,
     })
-    currentPage.value = 1
+
+    if (keepPage) {
+      // 篩選「借用中」時歸還後該筆會消失，頁碼不能超過最後一頁
+      const lastPage = Math.max(1, Math.ceil(borrowRecordList.value.length / pageSize))
+      currentPage.value = Math.min(currentPage.value, lastPage)
+    } else {
+      // 篩選條件可能變了，回到第 1 頁
+      currentPage.value = 1
+    }
   } catch (error) {
     ElMessage.error(toErrorMessage(error))
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 確認後歸還設備，歸還時間為現在
+ * @param record 要歸還的借用紀錄
+ * @returns 沒有回傳值；按取消時不做事，失敗時顯示錯誤訊息
+ */
+async function handleReturn(record: BorrowRecord) {
+  try {
+    await ElMessageBox.confirm(
+      `確定要歸還「${record.assetCode} ${record.equipmentName}」嗎？（借用人：${record.borrowerName}）`,
+      '歸還設備',
+      { type: 'info', confirmButtonText: '歸還', cancelButtonText: '取消' },
+    )
+  } catch {
+    // 按取消或關閉確認框
+    return
+  }
+
+  try {
+    await returnEquipment(record.id)
+    ElMessage.success('歸還成功')
+    await loadBorrowRecordList(true)
+  } catch (error) {
+    ElMessage.error(toErrorMessage(error))
   }
 }
 
@@ -200,6 +235,22 @@ onMounted(() => {
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column label="操作" width="90" align="center" fixed="right">
+        <template #default="{ row }">
+          <!--
+            只有未歸還（借用中、逾期）的紀錄顯示「歸還」按鈕
+            已歸還的紀錄佔大多數，不顯示停用的按鈕，避免一整欄灰色按鈕干擾閱讀
+          -->
+          <el-button
+            v-if="(row as BorrowRecord).status !== BorrowRecordStatus.Returned"
+            size="small"
+            @click="handleReturn(row as BorrowRecord)"
+          >
+            歸還
+          </el-button>
+          <span v-else class="text-muted">—</span>
+        </template>
+      </el-table-column>
     </el-table>
 
     <!-- 前端分頁：total 是完整清單的筆數，切換頁碼時 pagedBorrowRecordList 會自動更新 -->
@@ -222,6 +273,11 @@ onMounted(() => {
 /* 設備選項會顯示「財產編號 名稱」，給寬一點 */
 .filter-select--wide {
   width: 240px;
+}
+
+/* 已歸還的紀錄在操作欄顯示的「—」 */
+.text-muted {
+  color: var(--el-text-color-placeholder);
 }
 
 .pagination {

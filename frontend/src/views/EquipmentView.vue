@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Edit } from '@element-plus/icons-vue'
+import { Delete, Edit, MoreFilled } from '@element-plus/icons-vue'
+import BorrowDialog from '@/components/BorrowDialog.vue'
 import EquipmentFormDialog from '@/components/EquipmentFormDialog.vue'
 import { deleteEquipment, getEquipmentList } from '@/api/equipment'
 import { getEquipmentTypes } from '@/api/equipmentType'
@@ -34,6 +35,15 @@ const statusTagTypes: Record<EquipmentStatus, 'success' | 'primary' | 'danger'> 
   1: 'success',
   2: 'primary',
   3: 'danger',
+}
+
+/**
+ * 「借用」按鈕停用時 tooltip 顯示的原因；可借用時 tooltip 不顯示，所以留空
+ */
+const borrowDisabledReasons: Record<EquipmentStatus, string> = {
+  1: '',
+  2: '設備借用中，無法借出',
+  3: '設備逾期未還，無法借出',
 }
 
 /**
@@ -81,6 +91,16 @@ const formDialogVisible = ref(false)
  * 對話框要修改的設備；null 代表新增
  */
 const editingEquipment = ref<Equipment | null>(null)
+
+/**
+ * 借用設備的對話框是否顯示
+ */
+const borrowDialogVisible = ref(false)
+
+/**
+ * 要借用的設備
+ */
+const borrowingEquipment = ref<Equipment | null>(null)
 
 /**
  * 載入設備類型，給篩選的下拉選單使用
@@ -139,6 +159,16 @@ function openEditDialog(equipment: Equipment) {
 }
 
 /**
+ * 打開借用設備的對話框
+ * @param equipment 要借用的設備
+ * @returns 沒有回傳值
+ */
+function openBorrowDialog(equipment: Equipment) {
+  borrowingEquipment.value = equipment
+  borrowDialogVisible.value = true
+}
+
+/**
  * 確認後刪除設備（軟刪除）
  * @param equipment 要刪除的設備
  * @returns 沒有回傳值；按取消時不做事，失敗時顯示錯誤訊息
@@ -161,6 +191,20 @@ async function handleDelete(equipment: Equipment) {
     await loadEquipmentList(true)
   } catch (error) {
     ElMessage.error(toErrorMessage(error))
+  }
+}
+
+/**
+ * 處理「⋯」選單的項目：修改或刪除
+ * @param command 被點選的選單項目，edit 或 delete
+ * @param equipment 這一列的設備
+ * @returns 沒有回傳值
+ */
+function handleRowCommand(command: string | number | object, equipment: Equipment) {
+  if (command === 'edit') {
+    openEditDialog(equipment)
+  } else if (command === 'delete') {
+    handleDelete(equipment)
   }
 }
 
@@ -238,41 +282,67 @@ onMounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="100" align="center" fixed="right">
+      <el-table-column label="操作" width="140" align="center" fixed="right">
         <template #default="{ row }">
           <!--
-            el-tooltip 在滑鼠移上去時顯示文字說明，aria-label 給螢幕閱讀器使用
-            按鈕外面包一層 span：停用的按鈕不會觸發滑鼠事件，tooltip 要掛在 span 上才顯示得出來
+            主要動作「借用」單獨顯示；次要動作「修改」「刪除」收進「⋯」選單
+            兩顆都用預設按鈕（淺灰框、白底），避免跟狀態欄的彩色標籤混淆
           -->
           <div class="row-actions">
-            <el-tooltip content="修改" placement="top">
-              <span>
-                <el-button
-                  link
-                  type="primary"
-                  :icon="Edit"
-                  aria-label="修改"
-                  @click="openEditDialog(row as Equipment)"
-                />
-              </span>
-            </el-tooltip>
-
-            <!-- 借用中、逾期的設備不能刪除；後端也會擋，這裡先停用按鈕並說明原因 -->
+            <!--
+              只有可借用的設備能借出；後端也會擋，這裡先停用按鈕並用 tooltip 說明原因
+              按鈕外面包一層 span：停用的按鈕不會觸發滑鼠事件，tooltip 要掛在 span 上才顯示得出來
+            -->
             <el-tooltip
-              :content="(row as Equipment).status === EquipmentStatus.Available ? '刪除' : '借用中的設備不能刪除'"
+              :content="borrowDisabledReasons[(row as Equipment).status]"
               placement="top"
+              :disabled="(row as Equipment).status === EquipmentStatus.Available"
             >
               <span>
                 <el-button
-                  link
-                  type="danger"
-                  :icon="Delete"
-                  aria-label="刪除"
+                  size="small"
                   :disabled="(row as Equipment).status !== EquipmentStatus.Available"
-                  @click="handleDelete(row as Equipment)"
-                />
+                  @click="openBorrowDialog(row as Equipment)"
+                >
+                  借用
+                </el-button>
               </span>
             </el-tooltip>
+
+            <!-- trigger="click"：點擊展開，手機也能操作 -->
+            <el-dropdown trigger="click" @command="(command) => handleRowCommand(command, row as Equipment)">
+              <el-button size="small" :icon="MoreFilled" aria-label="更多操作" />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item :icon="Edit" command="edit">修改</el-dropdown-item>
+                  <!--
+                    借用中、逾期的設備不能刪除；跟借用按鈕一樣停用並用 tooltip 說明原因
+                    停用的選單項目仍會觸發滑鼠事件，tooltip 可以直接掛在裡面的 span 上
+                  -->
+                  <el-dropdown-item
+                    command="delete"
+                    divided
+                    :disabled="(row as Equipment).status !== EquipmentStatus.Available"
+                    class="danger-item"
+                  >
+                    <!--
+                      placement="left"：選單在表格最右邊，往左顯示才不會被畫面切掉
+                      icon 不用 :icon prop，改放在 span 裡，tooltip 才會對齊整個項目的左邊、不蓋住 icon
+                    -->
+                    <el-tooltip
+                      content="設備尚未歸還，無法刪除"
+                      placement="left"
+                      :disabled="(row as Equipment).status === EquipmentStatus.Available"
+                    >
+                      <span class="menu-item-label">
+                        <el-icon><Delete /></el-icon>
+                        刪除
+                      </span>
+                    </el-tooltip>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
         </template>
       </el-table-column>
@@ -294,6 +364,12 @@ onMounted(() => {
       :equipment-types="equipmentTypes"
       @saved="loadEquipmentList(true)"
     />
+
+    <BorrowDialog
+      v-model="borrowDialogVisible"
+      :equipment="borrowingEquipment"
+      @borrowed="loadEquipmentList(true)"
+    />
   </el-card>
 </template>
 
@@ -308,17 +384,36 @@ onMounted(() => {
   width: 160px;
 }
 
-/* 操作欄的兩個 icon 按鈕：外面包了 span，Element Plus 預設的按鈕間距會失效，改用 gap */
+/* 操作欄：「借用」和「⋯」兩顆按鈕並排置中；借用按鈕外面包了 span，Element Plus 預設的按鈕間距會失效，改用 gap */
 .row-actions {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-/* icon 從預設的 14px（跟著按鈕字體）放大到 18px */
-.row-actions :deep(.el-icon) {
-  font-size: 18px;
+/* 選單裡的「刪除」用紅字表示有破壞性；停用時維持 Element Plus 的灰色 */
+.danger-item:not(.is-disabled) {
+  color: var(--el-color-danger);
+}
+
+/*
+ * 選單項目的內容（icon＋文字）撐滿整個項目：用負 margin 抵銷項目 5px 16px 的 padding，再用 padding 補回
+ * 滑鼠移到項目任何位置都會出現 tooltip，tooltip 也會出現在選單外面、不蓋住 icon
+ */
+.menu-item-label {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  margin: -5px -16px;
+  padding: 5px 16px;
+}
+
+/* 滑鼠移上去時 Element Plus 預設會變藍色，刪除改成維持紅字、淡紅色背景 */
+.danger-item:not(.is-disabled):hover,
+.danger-item:not(.is-disabled):focus {
+  color: var(--el-color-danger);
+  background-color: var(--el-color-danger-light-9);
 }
 
 .pagination {

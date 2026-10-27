@@ -117,7 +117,7 @@ async function handleSubmit() {
     await createBorrowRecord({
       equipmentId: props.equipment.id,
       borrowerName: form.borrowerName.trim(),
-      // toISOString() 會轉成 UTC，例如 2026-11-02T10:00:00.000Z；借出時間不傳，代表現在
+      // toISOString() 會轉成 UTC，例如 2026-11-02T10:00:00.000Z；借出時間由後端以目前時間寫入
       expectReturnTime: form.expectReturnTime.toISOString(),
     })
     ElMessage.success('借用成功')

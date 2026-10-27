@@ -193,21 +193,24 @@ $$;
 
 -- -------------------------------------------------------------
 -- POST /api/EquipmentBorrowRecord  新增借用紀錄
---   p_borrow_time：傳 NULL 時以目前時間為借出時間
+--   借出時間一律為目前時間，不開放呼叫端指定，
+--   避免倒填造成借用期間重疊，或填未來時間導致之後無法歸還
 --   p_id：傳入 NULL，執行後帶回新增的借用紀錄 ID
---   CALL sp_borrow_record_create(1, '王小明', now() + interval '7 days', NULL, NULL);
+--   CALL sp_borrow_record_create(1, '王小明', now() + interval '7 days', NULL);
 -- -------------------------------------------------------------
+-- 舊版有 p_borrow_time 參數，參數不同 CREATE OR REPLACE 會變成另一個多載，要先刪除
+DROP PROCEDURE IF EXISTS sp_borrow_record_create(INTEGER, VARCHAR, TIMESTAMPTZ, TIMESTAMPTZ, INTEGER);
+
 CREATE OR REPLACE PROCEDURE sp_borrow_record_create(
     p_equipment_id       INTEGER,
     p_borrower_name      VARCHAR,
     p_expect_return_time TIMESTAMPTZ,
-    p_borrow_time        TIMESTAMPTZ DEFAULT NULL,
-    INOUT p_id           INTEGER     DEFAULT NULL
+    INOUT p_id           INTEGER DEFAULT NULL
 )
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_borrow_time      TIMESTAMPTZ := coalesce(p_borrow_time, now());
+    v_borrow_time      TIMESTAMPTZ := now();
     v_active_record_id INTEGER;
 BEGIN
     -- 鎖住設備，避免同一台設備被同時借出

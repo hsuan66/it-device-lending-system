@@ -4,6 +4,7 @@ namespace DeviceLending.Api.Models.Dtos;
 
 // POST /api/EquipmentBorrowRecord 前端送來的格式
 // 長度限制對齊資料表欄位，避免超長字串送進資料庫變成 500
+// 借出時間不開放指定，一律由預存程序以目前時間寫入
 public class PostEquipmentBorrowRecordRequest
 {
     // 沒傳時預設 0 也會被擋下
@@ -17,7 +18,4 @@ public class PostEquipmentBorrowRecordRequest
     // 用可為 null 的型別，[Required] 才擋得住沒傳的情況
     [Required]
     public DateTimeOffset? ExpectReturnTime { get; init; }
-
-    // 實際借出時間，不傳代表現在
-    public DateTimeOffset? BorrowTime { get; init; }
 }

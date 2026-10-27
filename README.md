@@ -115,7 +115,7 @@ dotnet run
 
 - 啟動後 API 位於 `http://localhost:5123`
 - 開發環境可開啟 `http://localhost:5123/scalar` 查看與測試所有 API
-- log 檔會寫入 `C:\logs\DeviceLending\`，可在 `appsettings.json` 的 `LogDirectory` 修改
+- log 檔預設寫入執行目錄下的 `logs/`（`dotnet run` 時為 `bin/Debug/net10.0/logs/`），可在 `appsettings.json` 的 `LogDirectory` 改成其他資料夾
 
 ### 3. 前端
 

@@ -39,10 +39,9 @@ public class EquipmentRepository(NpgsqlDataSource dataSource) : IEquipmentReposi
                     , equipment.name
                     , equipment.equipment_type_id
                     , equipment_type.name AS equipment_type_name
-                    , CASE WHEN borrow_record.id IS NULL                 
-                    THEN 1
-                    WHEN borrow_record.expect_return_time < now() THEN 3
-                    ELSE 2
+                    , CASE WHEN borrow_record.id IS NULL THEN 3
+                        WHEN borrow_record.expect_return_time < now() THEN 2
+                        ELSE 1
                     END AS status
                 FROM equipment
                 JOIN equipment_type

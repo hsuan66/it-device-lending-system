@@ -1,10 +1,10 @@
 /**
- * 設備狀態代碼，對應後端 EquipmentStatus
+ * 設備狀態代碼，對應後端 EquipmentStatus；借用中、逾期的代碼與借用紀錄狀態相同
  */
 export const EquipmentStatus = {
-  Available: 1, // 可借用
-  Borrowed: 2, // 借用中
-  Overdue: 3, // 逾期
+  Borrowed: 1, // 借用中
+  Overdue: 2, // 逾期
+  Available: 3, // 可借用
 } as const
 
 /**
@@ -16,9 +16,9 @@ export type EquipmentStatus = (typeof EquipmentStatus)[keyof typeof EquipmentSta
  * 設備狀態在畫面上顯示的中文名稱
  */
 export const equipmentStatusLabels: Record<EquipmentStatus, string> = {
-  1: '可借用',
-  2: '借用中',
-  3: '逾期',
+  1: '借用中',
+  2: '逾期',
+  3: '可借用',
 }
 
 /**

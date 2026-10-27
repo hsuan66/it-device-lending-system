@@ -31,7 +31,7 @@
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | id | INTEGER, PK, IDENTITY | 設備 ID |
-| asset_code | VARCHAR(30), NOT NULL, UNIQUE | 財產編號 |
+| asset_code | VARCHAR(30), NOT NULL, UNIQUE | 財產編號，終身唯一（已刪除的設備也不能重複使用） |
 | name | VARCHAR(100), NOT NULL | 設備名稱 |
 | equipment_type_id | SMALLINT, NOT NULL, FK → equipment_type | 設備類型 |
 | is_archive | BOOLEAN, NOT NULL, DEFAULT false | 設備是否刪除(軟刪除) |

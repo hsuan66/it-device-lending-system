@@ -58,6 +58,17 @@ BEGIN
         RETURNING equipment.id INTO p_id;
     EXCEPTION
         WHEN unique_violation THEN
+            -- 撞到的是已刪除的設備：財產編號終身唯一，刪除後也不能再使用
+            IF EXISTS (
+                SELECT 1
+                  FROM equipment e
+                 WHERE e.asset_code = btrim(p_asset_code)
+                   AND e.is_archive
+            ) THEN
+                RAISE EXCEPTION '此財產編號屬於已刪除的設備，不能重複使用：%', btrim(p_asset_code)
+                    USING ERRCODE = 'DL409';
+            END IF;
+
             RAISE EXCEPTION '財產編號已存在：%', btrim(p_asset_code) USING ERRCODE = 'DL409';
     END;
 END;
@@ -107,6 +118,17 @@ BEGIN
          WHERE e.id = p_id;
     EXCEPTION
         WHEN unique_violation THEN
+            -- 撞到的是已刪除的設備：財產編號終身唯一，刪除後也不能再使用
+            IF EXISTS (
+                SELECT 1
+                  FROM equipment e
+                 WHERE e.asset_code = btrim(p_asset_code)
+                   AND e.is_archive
+            ) THEN
+                RAISE EXCEPTION '此財產編號屬於已刪除的設備，不能重複使用：%', btrim(p_asset_code)
+                    USING ERRCODE = 'DL409';
+            END IF;
+
             RAISE EXCEPTION '財產編號已存在：%', btrim(p_asset_code) USING ERRCODE = 'DL409';
     END;
 END;

@@ -1,7 +1,7 @@
 /**
  * 後端錯誤代碼（errorCode）對應的使用者訊息
- * 後端回應的 title 是給開發者看的（會帶資料 id），畫面上一律依代碼顯示這裡的訊息
- * 1xxx 共用、2xxx 設備、3xxx 借用紀錄；代碼的意義見 README 的「錯誤代碼」
+ * 後端回應的 message 是給開發者看的（會帶資料 id），畫面上一律依代碼顯示這裡的訊息
+ * 1xxx 共用、2xxx 設備、3xxx 借用紀錄；代碼的意義見後端 Infrastructure/ErrorCodes.cs 與 DB/04_procedures.sql 檔頭
  */
 export const errorMessages: Record<number, string> = {
   1001: '輸入的資料有誤，請檢查後再試一次',

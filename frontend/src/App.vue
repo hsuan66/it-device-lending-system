@@ -5,23 +5,31 @@ import { RouterView, useRoute } from 'vue-router'
  * 目前的路由，用來讓選單標示目前所在的頁面
  */
 const route = useRoute()
+
+/**
+ * 提示訊息（ElMessage）的全域設定：顯示在畫面右上角
+ */
+const messageConfig = { placement: 'top-right' } as const
 </script>
 
 <template>
-  <el-container class="layout">
-    <el-header class="layout-header">
-      <div class="layout-title">IT 設備借用系統</div>
-      <!-- router：點選單項目時，自動切換到 index 指定的路徑 -->
-      <el-menu mode="horizontal" router :default-active="route.path" :ellipsis="false" class="layout-menu">
-        <el-menu-item index="/equipment">設備管理</el-menu-item>
-        <el-menu-item index="/borrow-records">借用紀錄</el-menu-item>
-      </el-menu>
-    </el-header>
+  <!-- el-config-provider：Element Plus 的全域設定，ElMessage 的位置只能從這裡統一設定 -->
+  <el-config-provider :message="messageConfig">
+    <el-container class="layout">
+      <el-header class="layout-header">
+        <div class="layout-title">IT 設備借用系統</div>
+        <!-- router：點選單項目時，自動切換到 index 指定的路徑 -->
+        <el-menu mode="horizontal" router :default-active="route.path" :ellipsis="false" class="layout-menu">
+          <el-menu-item index="/equipment">設備管理</el-menu-item>
+          <el-menu-item index="/borrow-records">借用紀錄</el-menu-item>
+        </el-menu>
+      </el-header>
 
-    <el-main class="layout-main">
-      <RouterView />
-    </el-main>
-  </el-container>
+      <el-main class="layout-main">
+        <RouterView />
+      </el-main>
+    </el-container>
+  </el-config-provider>
 </template>
 
 <style>

@@ -11,4 +11,5 @@ public class EquipmentListItem
     public short EquipmentTypeId { get; set; } // SMALLINT → short
     public string EquipmentTypeName { get; set; } = string.Empty; // equipment_type.name
     public EquipmentStatus Status { get; set; } // 由 borrow_record 推算
+    public bool IsArchive { get; set; } // BOOLEAN → bool，true 代表已刪除
 }

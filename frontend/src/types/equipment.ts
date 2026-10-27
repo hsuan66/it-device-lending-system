@@ -31,6 +31,8 @@ export interface Equipment {
   equipmentTypeId: number
   equipmentTypeName: string
   status: EquipmentStatus
+  /** 是否已刪除；只有查詢時帶 includeArchived 才可能是 true */
+  isArchive: boolean
 }
 
 /**
@@ -39,6 +41,8 @@ export interface Equipment {
 export interface EquipmentQuery {
   typeId?: number
   status?: EquipmentStatus
+  /** 是否一併列出已刪除的設備，不傳代表不列出 */
+  includeArchived?: boolean
 }
 
 /**

@@ -9,4 +9,5 @@ public record GetEquipmentResponse(
     string Name,
     int EquipmentTypeId,
     string EquipmentTypeName,
-    EquipmentStatus Status);
+    EquipmentStatus Status,
+    bool IsArchive);

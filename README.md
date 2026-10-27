@@ -141,7 +141,7 @@ npm run dev
 
 | Method | URL | 用途 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/Equipment` | 查詢設備清單，可依設備類型（`typeId`）、狀態（`status`：1 借用中、2 逾期、3 可借用）篩選 | 後端 SQL |
+| GET | `/api/Equipment` | 查詢設備清單，可依設備類型（`typeId`）、狀態（`status`：1 借用中、2 逾期、3 可借用）篩選；預設不含已刪除的設備，帶 `includeArchived=true` 可一併列出 | 後端 SQL |
 | POST | `/api/Equipment` | 新增設備 | `sp_equipment_create` |
 | PUT | `/api/Equipment/{id}` | 修改設備 | `sp_equipment_update` |
 | DELETE | `/api/Equipment/{id}` | 刪除設備（軟刪除） | `sp_equipment_delete` |

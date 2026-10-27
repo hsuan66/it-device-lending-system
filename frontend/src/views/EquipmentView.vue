@@ -14,6 +14,7 @@ import {
 } from '@/types/equipment'
 import type { EquipmentType } from '@/types/equipmentType'
 import { toErrorMessage } from '@/utils/error'
+import { hasFilterValue } from '@/utils/filter'
 
 /**
  * 設備類型下拉選單的選項，從後端取得
@@ -63,6 +64,16 @@ const equipmentList = ref<Equipment[]>([])
  * 是否正在載入設備清單
  */
 const loading = ref(false)
+
+/**
+ * 最近一次載入設備清單是否失敗；失敗時表格顯示「資料載入失敗」與重新整理按鈕
+ */
+const loadFailed = ref(false)
+
+/**
+ * 最近一次查詢是否有帶篩選條件；用來區分「完全沒有設備」和「篩選後沒有符合的設備」
+ */
+const filtered = ref(false)
 
 /**
  * 每頁顯示的筆數
@@ -121,8 +132,11 @@ async function loadEquipmentTypes() {
  */
 async function loadEquipmentList(keepPage = false) {
   loading.value = true
+  // 記下這次查詢有沒有篩選條件
+  filtered.value = [query.typeId, query.status].some(hasFilterValue)
   try {
     equipmentList.value = await getEquipmentList(query)
+    loadFailed.value = false
 
     if (keepPage) {
       // 刪除後總頁數可能變少，頁碼不能超過最後一頁
@@ -133,6 +147,9 @@ async function loadEquipmentList(keepPage = false) {
       currentPage.value = 1
     }
   } catch (error) {
+    // 清空舊資料，避免畫面上留著可能已經過時的清單
+    equipmentList.value = []
+    loadFailed.value = true
     ElMessage.error(toErrorMessage(error))
   } finally {
     loading.value = false
@@ -270,8 +287,18 @@ onMounted(() => {
       border
       stripe
       scrollbar-always-on
-      empty-text="沒有符合條件的設備"
     >
+      <!-- 沒有資料時，依情況顯示不同的說明；載入中不顯示，避免文字在轉圈圈底下閃一下 -->
+      <template #empty>
+        <template v-if="!loading">
+          <el-empty v-if="loadFailed" :image-size="80" description="資料載入失敗">
+            <el-button type="primary" @click="loadEquipmentList()">重新整理</el-button>
+          </el-empty>
+          <el-empty v-else-if="filtered" :image-size="80" description="沒有符合條件的設備" />
+          <el-empty v-else :image-size="80" description="目前沒有設備，請點右上角「新增設備」建立" />
+        </template>
+      </template>
+
       <el-table-column prop="assetCode" label="財產編號" min-width="140" />
       <el-table-column prop="name" label="設備名稱" min-width="220" />
       <el-table-column prop="equipmentTypeName" label="類型" min-width="120" />

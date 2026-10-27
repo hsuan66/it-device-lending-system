@@ -12,6 +12,7 @@ import {
 import type { Equipment } from '@/types/equipment'
 import { formatDateTime } from '@/utils/date'
 import { toErrorMessage } from '@/utils/error'
+import { hasFilterValue } from '@/utils/filter'
 
 /**
  * 設備下拉選單的選項，從設備清單取得（不含已刪除的設備）
@@ -55,6 +56,16 @@ const borrowRecordList = ref<BorrowRecord[]>([])
 const loading = ref(false)
 
 /**
+ * 最近一次載入借用紀錄是否失敗；失敗時表格顯示「資料載入失敗」與重新整理按鈕
+ */
+const loadFailed = ref(false)
+
+/**
+ * 最近一次查詢是否有帶篩選條件；用來區分「完全沒有紀錄」和「篩選後沒有符合的紀錄」
+ */
+const filtered = ref(false)
+
+/**
  * 每頁顯示的筆數
  */
 const pageSize = 10
@@ -91,12 +102,15 @@ async function loadEquipmentOptions() {
  */
 async function loadBorrowRecordList(keepPage = false) {
   loading.value = true
+  // 記下這次查詢有沒有篩選條件
+  filtered.value = [query.equipmentId, query.borrowerName, query.status].some(hasFilterValue)
   try {
     borrowRecordList.value = await getBorrowRecordList({
       ...query,
       // 只有空白時視為不篩選
       borrowerName: query.borrowerName?.trim() || undefined,
     })
+    loadFailed.value = false
 
     if (keepPage) {
       // 篩選「借用中」時歸還後該筆會消失，頁碼不能超過最後一頁
@@ -107,6 +121,9 @@ async function loadBorrowRecordList(keepPage = false) {
       currentPage.value = 1
     }
   } catch (error) {
+    // 清空舊資料，避免畫面上留著可能已經過時的清單
+    borrowRecordList.value = []
+    loadFailed.value = true
     ElMessage.error(toErrorMessage(error))
   } finally {
     loading.value = false
@@ -214,8 +231,18 @@ onMounted(() => {
       border
       stripe
       scrollbar-always-on
-      empty-text="沒有符合條件的借用紀錄"
     >
+      <!-- 沒有資料時，依情況顯示不同的說明；載入中不顯示，避免文字在轉圈圈底下閃一下 -->
+      <template #empty>
+        <template v-if="!loading">
+          <el-empty v-if="loadFailed" :image-size="80" description="資料載入失敗">
+            <el-button type="primary" @click="loadBorrowRecordList()">重新整理</el-button>
+          </el-empty>
+          <el-empty v-else-if="filtered" :image-size="80" description="沒有符合條件的借用紀錄" />
+          <el-empty v-else :image-size="80" description="目前沒有借用紀錄，可以在「設備管理」借用設備" />
+        </template>
+      </template>
+
       <el-table-column prop="assetCode" label="財產編號" min-width="130" />
       <el-table-column prop="equipmentName" label="設備名稱" min-width="200" />
       <el-table-column prop="borrowerName" label="借用人" min-width="100" />

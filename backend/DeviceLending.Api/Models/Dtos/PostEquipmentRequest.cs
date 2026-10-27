@@ -8,6 +8,7 @@ public class PostEquipmentRequest
 {
     [Required]
     [MaxLength(30)]
+    [RegularExpression("^[A-Z0-9-]+$", ErrorMessage = "財產編號只能包含英文大寫、數字和 -")]
     public string AssetCode { get; init; } = string.Empty;
 
     [Required]

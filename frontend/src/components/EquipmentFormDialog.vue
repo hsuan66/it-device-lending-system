@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { createEquipment, updateEquipment } from '@/api/equipment'
+import { vAssetCode } from '@/directives/assetCode'
 import type { Equipment } from '@/types/equipment'
 import type { EquipmentType } from '@/types/equipmentType'
 import { toErrorMessage } from '@/utils/error'
@@ -139,7 +140,13 @@ async function handleSubmit() {
   >
     <el-form ref="formRef" :model="form" :rules="rules" label-width="80px" @submit.prevent="handleSubmit">
       <el-form-item label="財產編號" prop="assetCode">
-        <el-input v-model="form.assetCode" maxlength="30" placeholder="例如 NB-2025-001" />
+        <!-- v-asset-code：只能輸入英文大寫、數字和 -，小寫會自動轉大寫 -->
+        <el-input
+          v-model="form.assetCode"
+          v-asset-code
+          maxlength="30"
+          placeholder="英文大寫、數字和 -，例如 NB-2025-001"
+        />
       </el-form-item>
 
       <el-form-item label="設備名稱" prop="name">

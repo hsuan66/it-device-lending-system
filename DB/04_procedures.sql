@@ -11,10 +11,20 @@
 --     借用 / 歸還 / 修改 / 刪除以 SELECT ... FOR UPDATE 鎖定資料列，避免併發重複借出
 --   * 沒有 update_time trigger，UPDATE 時需自行寫入 update_time = now()
 --
--- 自訂錯誤代碼（SQLSTATE），後端可依此對應 HTTP 狀態碼：
---   DL400  參數不合法                          → 400 Bad Request
---   DL404  資料不存在或已刪除                  → 404 Not Found
---   DL409  狀態衝突（借用中、已歸還、編號重複）→ 409 Conflict
+-- 自訂錯誤代碼（SQLSTATE）：U + 4 位數字（U = User-defined）
+--   後端把 U 後面的數字當成 errorCode 回傳給前端，並對應 HTTP 狀態碼；
+--   錯誤訊息是給開發者看的（會寫進 log），前端依 errorCode 自行顯示給使用者看的訊息
+--   U1002  必填欄位為空                    → 400
+--   U2001  設備類型不存在                  → 404
+--   U2002  設備不存在或已刪除              → 404
+--   U2003  財產編號已存在                  → 409
+--   U2004  財產編號屬於已刪除的設備        → 409
+--   U2005  設備借用中，無法刪除            → 409
+--   U2006  設備借用中，無法借出            → 409
+--   U3001  借用紀錄不存在                  → 404
+--   U3002  借用紀錄已歸還                  → 409
+--   U3003  預計歸還時間必須晚於借出時間    → 400
+--   U3004  歸還時間不可早於借出時間        → 400
 -- =============================================================
 
 SET client_encoding = 'UTF8';
@@ -41,15 +51,17 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
     IF coalesce(btrim(p_asset_code), '') = '' THEN
-        RAISE EXCEPTION '財產編號不可為空' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '新增設備失敗：財產編號為 NULL 或空白' USING ERRCODE = 'U1002';
     END IF;
 
     IF coalesce(btrim(p_name), '') = '' THEN
-        RAISE EXCEPTION '設備名稱不可為空' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '新增設備失敗：設備名稱為 NULL 或空白（asset_code=%）', btrim(p_asset_code)
+            USING ERRCODE = 'U1002';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM equipment_type t WHERE t.id = p_equipment_type_id) THEN
-        RAISE EXCEPTION '設備類型不存在：%', p_equipment_type_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '新增設備失敗：設備類型不存在（equipment_type_id=%）', p_equipment_type_id
+            USING ERRCODE = 'U2001';
     END IF;
 
     BEGIN
@@ -65,11 +77,12 @@ BEGIN
                  WHERE e.asset_code = btrim(p_asset_code)
                    AND e.is_archive
             ) THEN
-                RAISE EXCEPTION '此財產編號屬於已刪除的設備，不能重複使用：%', btrim(p_asset_code)
-                    USING ERRCODE = 'DL409';
+                RAISE EXCEPTION '新增設備失敗：財產編號屬於已刪除的設備（asset_code=%）', btrim(p_asset_code)
+                    USING ERRCODE = 'U2004';
             END IF;
 
-            RAISE EXCEPTION '財產編號已存在：%', btrim(p_asset_code) USING ERRCODE = 'DL409';
+            RAISE EXCEPTION '新增設備失敗：財產編號已存在（asset_code=%）', btrim(p_asset_code)
+                USING ERRCODE = 'U2003';
     END;
 END;
 $$;
@@ -94,19 +107,24 @@ BEGIN
         FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION '設備不存在或已刪除：%', p_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '修改設備失敗：設備不存在或已刪除（equipment_id=%）', p_id
+            USING ERRCODE = 'U2002';
     END IF;
 
     IF coalesce(btrim(p_asset_code), '') = '' THEN
-        RAISE EXCEPTION '財產編號不可為空' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '修改設備失敗：財產編號為 NULL 或空白（equipment_id=%）', p_id
+            USING ERRCODE = 'U1002';
     END IF;
 
     IF coalesce(btrim(p_name), '') = '' THEN
-        RAISE EXCEPTION '設備名稱不可為空' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '修改設備失敗：設備名稱為 NULL 或空白（equipment_id=%）', p_id
+            USING ERRCODE = 'U1002';
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM equipment_type t WHERE t.id = p_equipment_type_id) THEN
-        RAISE EXCEPTION '設備類型不存在：%', p_equipment_type_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '修改設備失敗：設備類型不存在（equipment_id=%, equipment_type_id=%）',
+            p_id, p_equipment_type_id
+            USING ERRCODE = 'U2001';
     END IF;
 
     BEGIN
@@ -125,11 +143,14 @@ BEGIN
                  WHERE e.asset_code = btrim(p_asset_code)
                    AND e.is_archive
             ) THEN
-                RAISE EXCEPTION '此財產編號屬於已刪除的設備，不能重複使用：%', btrim(p_asset_code)
-                    USING ERRCODE = 'DL409';
+                RAISE EXCEPTION '修改設備失敗：財產編號屬於已刪除的設備（equipment_id=%, asset_code=%）',
+                    p_id, btrim(p_asset_code)
+                    USING ERRCODE = 'U2004';
             END IF;
 
-            RAISE EXCEPTION '財產編號已存在：%', btrim(p_asset_code) USING ERRCODE = 'DL409';
+            RAISE EXCEPTION '修改設備失敗：財產編號已被其他設備使用（equipment_id=%, asset_code=%）',
+                p_id, btrim(p_asset_code)
+                USING ERRCODE = 'U2003';
     END;
 END;
 $$;
@@ -144,6 +165,8 @@ CREATE OR REPLACE PROCEDURE sp_equipment_delete(
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_active_record_id INTEGER;
 BEGIN
     PERFORM 1
        FROM equipment e
@@ -152,16 +175,20 @@ BEGIN
         FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION '設備不存在或已刪除：%', p_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '刪除設備失敗：設備不存在或已刪除（equipment_id=%）', p_id
+            USING ERRCODE = 'U2002';
     END IF;
 
-    IF EXISTS (
-        SELECT 1
-          FROM borrow_record br
-         WHERE br.equipment_id = p_id
-           AND br.return_time IS NULL
-    ) THEN
-        RAISE EXCEPTION '設備借用中，無法刪除：%', p_id USING ERRCODE = 'DL409';
+    SELECT br.id
+      INTO v_active_record_id
+      FROM borrow_record br
+     WHERE br.equipment_id = p_id
+       AND br.return_time IS NULL;
+
+    IF FOUND THEN
+        RAISE EXCEPTION '刪除設備失敗：設備借用中（equipment_id=%, borrow_record_id=%）',
+            p_id, v_active_record_id
+            USING ERRCODE = 'U2005';
     END IF;
 
     UPDATE equipment e
@@ -187,7 +214,8 @@ CREATE OR REPLACE PROCEDURE sp_borrow_record_create(
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_borrow_time TIMESTAMPTZ := coalesce(p_borrow_time, now());
+    v_borrow_time      TIMESTAMPTZ := coalesce(p_borrow_time, now());
+    v_active_record_id INTEGER;
 BEGIN
     -- 鎖住設備，避免同一台設備被同時借出
     PERFORM 1
@@ -197,24 +225,31 @@ BEGIN
         FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION '設備不存在或已刪除：%', p_equipment_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '借用設備失敗：設備不存在或已刪除（equipment_id=%）', p_equipment_id
+            USING ERRCODE = 'U2002';
     END IF;
 
     IF coalesce(btrim(p_borrower_name), '') = '' THEN
-        RAISE EXCEPTION '借用人姓名不可為空' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '借用設備失敗：借用人姓名為 NULL 或空白（equipment_id=%）', p_equipment_id
+            USING ERRCODE = 'U1002';
     END IF;
 
     IF p_expect_return_time IS NULL OR p_expect_return_time <= v_borrow_time THEN
-        RAISE EXCEPTION '預計歸還時間必須晚於借出時間' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '借用設備失敗：預計歸還時間必須晚於借出時間（equipment_id=%, borrow_time=%, expect_return_time=%）',
+            p_equipment_id, v_borrow_time, p_expect_return_time
+            USING ERRCODE = 'U3003';
     END IF;
 
-    IF EXISTS (
-        SELECT 1
-          FROM borrow_record br
-         WHERE br.equipment_id = p_equipment_id
-           AND br.return_time IS NULL
-    ) THEN
-        RAISE EXCEPTION '設備借用中，無法借出：%', p_equipment_id USING ERRCODE = 'DL409';
+    SELECT br.id
+      INTO v_active_record_id
+      FROM borrow_record br
+     WHERE br.equipment_id = p_equipment_id
+       AND br.return_time IS NULL;
+
+    IF FOUND THEN
+        RAISE EXCEPTION '借用設備失敗：設備借用中（equipment_id=%, borrow_record_id=%）',
+            p_equipment_id, v_active_record_id
+            USING ERRCODE = 'U2006';
     END IF;
 
     INSERT INTO borrow_record (equipment_id, borrower_name, borrow_time, expect_return_time)
@@ -245,17 +280,22 @@ BEGIN
        FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION '借用紀錄不存在：%', p_id USING ERRCODE = 'DL404';
+        RAISE EXCEPTION '歸還設備失敗：借用紀錄不存在（borrow_record_id=%）', p_id
+            USING ERRCODE = 'U3001';
     END IF;
 
     IF v_old_return IS NOT NULL THEN
-        RAISE EXCEPTION '此借用紀錄已歸還：%', p_id USING ERRCODE = 'DL409';
+        RAISE EXCEPTION '歸還設備失敗：借用紀錄已歸還（borrow_record_id=%, return_time=%）',
+            p_id, v_old_return
+            USING ERRCODE = 'U3002';
     END IF;
 
     p_return_time := coalesce(p_return_time, now());
 
     IF p_return_time < v_borrow_time THEN
-        RAISE EXCEPTION '歸還時間不可早於借出時間' USING ERRCODE = 'DL400';
+        RAISE EXCEPTION '歸還設備失敗：歸還時間早於借出時間（borrow_record_id=%, borrow_time=%, return_time=%）',
+            p_id, v_borrow_time, p_return_time
+            USING ERRCODE = 'U3004';
     END IF;
 
     UPDATE borrow_record br

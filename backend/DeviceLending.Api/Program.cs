@@ -15,9 +15,13 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 // NpgsqlDataSource 管理連線池，整個程式共用一個
 builder.Services.AddSingleton(NpgsqlDataSource.Create(connectionString));
 
-// 錯誤處理：資料庫自訂錯誤代碼轉成 HTTP 狀態碼，回傳格式統一用 ProblemDetails
-builder.Services.AddProblemDetails();
+// 錯誤處理：回傳格式統一為 { code, message }（ApiErrorResponse），依註冊順序處理
+// 1. 資料庫自訂錯誤代碼轉成 HTTP 狀態碼與 code　2. 其他錯誤一律 500
 builder.Services.AddExceptionHandler<PostgresExceptionHandler>();
+builder.Services.AddExceptionHandler<UnexpectedExceptionHandler>();
+// UseExceptionHandler() 啟動時會檢查要有 ProblemDetails 服務，否則程式無法啟動；
+// 實際上例外都由上面兩個處理器回應，不會用到 ProblemDetails 格式
+builder.Services.AddProblemDetails();
 
 // Repository 與 Service：每個 HTTP 請求建立一份
 builder.Services.AddScoped<IEquipmentTypeRepository, EquipmentTypeRepository>();
@@ -27,7 +31,10 @@ builder.Services.AddScoped<IEquipmentService, EquipmentService>();
 builder.Services.AddScoped<IEquipmentBorrowRecordRepository, EquipmentBorrowRecordRepository>();
 builder.Services.AddScoped<IEquipmentBorrowRecordService, EquipmentBorrowRecordService>();
 
-builder.Services.AddControllers();
+// 欄位驗證失敗時，回傳 code 1001 並記錄 log
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+        options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

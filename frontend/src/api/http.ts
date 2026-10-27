@@ -1,27 +1,33 @@
 /**
- * API 呼叫失敗時丟出的錯誤，message 可以直接顯示給使用者
+ * API 呼叫失敗時丟出的錯誤
+ * message 是後端給開發者看的訊息；畫面上要依 code 轉成使用者訊息（見 utils/error.ts）
  */
 export class ApiError extends Error {
   status: number
+  code?: number
 
   /**
    * 建立 API 錯誤
    * @param status HTTP 狀態碼，例如 400、404、409
-   * @param message 顯示給使用者的錯誤訊息
+   * @param message 後端給開發者看的錯誤訊息
+   * @param code 後端的錯誤代碼，例如 2006；後端沒有回傳時為 undefined
    */
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: number) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 }
 
 /**
- * 後端回傳的錯誤格式（ProblemDetails）
+ * 後端回傳的錯誤格式，例如 { code: 2006, message: '借用設備失敗：設備借用中（...）' }
  */
-interface ProblemDetails {
-  title?: string
-  errors?: Record<string, string[]>
+interface ApiErrorBody {
+  /** 錯誤代碼 */
+  code?: number
+  /** 給開發者看的訊息 */
+  message?: string
 }
 
 /**
@@ -46,7 +52,9 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
   const body = text ? parseJson(text) : undefined
 
   if (!res.ok) {
-    throw new ApiError(res.status, getErrorMessage(body as ProblemDetails | undefined, res.status))
+    // 後端沒開時可能回傳非 JSON 的錯誤頁，body 為 undefined，訊息改用 HTTP 狀態碼
+    const error = body as ApiErrorBody | undefined
+    throw new ApiError(res.status, error?.message ?? `HTTP ${res.status}`, error?.code)
   }
 
   return body as T
@@ -79,20 +87,4 @@ function parseJson(text: string): unknown {
   } catch {
     return undefined
   }
-}
-
-/**
- * 從後端的錯誤回應取出要顯示給使用者的訊息
- * @param body 後端回傳的 ProblemDetails
- * @param status HTTP 狀態碼，沒有訊息時用來組出預設訊息
- * @returns 錯誤訊息，例如「設備借用中，無法借出：2」
- */
-function getErrorMessage(body: ProblemDetails | undefined, status: number): string {
-  // 欄位驗證錯誤（400）：把每個欄位的訊息串起來
-  if (body?.errors) {
-    return Object.values(body.errors).flat().join('、')
-  }
-
-  // 預存程序丟出的錯誤：title 就是中文訊息
-  return body?.title ?? `HTTP ${status}`
 }

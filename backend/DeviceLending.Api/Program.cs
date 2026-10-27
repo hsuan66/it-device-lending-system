@@ -1,3 +1,4 @@
+using NLog.Web;
 using Scalar.AspNetCore;
 using Npgsql;
 using DeviceLending.Api.Infrastructure;
@@ -5,6 +6,11 @@ using DeviceLending.Api.Data;
 using DeviceLending.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Log：要記哪些等級設定在 appsettings.json（正式環境）與 appsettings.Development.json（開發）
+// 除了預設的終端機輸出，另外用 NLog 寫成檔案（寫到哪裡、格式見 nlog.config）
+// RemoveLoggerFactoryFilter = false：讓 NLog 也套用上面 appsettings 的等級設定，開發與正式環境才會不同
+builder.Host.UseNLog(new NLogAspNetCoreOptions { RemoveLoggerFactoryFilter = false });
 
 // Add services to the container.
 

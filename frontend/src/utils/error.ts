@@ -7,8 +7,11 @@ import { errorMessages } from '@/utils/errorMessages'
  * @returns 給使用者看的錯誤訊息；後端回傳的錯誤依錯誤代碼轉換，不直接顯示後端的訊息
  */
 export function toErrorMessage(error: unknown): string {
-  // 原始錯誤印在瀏覽器 console，開發者按 F12 可以看到後端的訊息與細節；畫面上只顯示給使用者看的訊息
-  console.error(error)
+  // 開發模式（npm run dev）才把原始錯誤印在瀏覽器 console，開發者按 F12 可以看到後端的訊息與細節
+  // 正式環境（npm run build）不印，後端 log 已有完整紀錄；畫面上一律只顯示給使用者看的訊息
+  if (import.meta.env.DEV) {
+    console.error(error)
+  }
 
   if (error instanceof ApiError) {
     // 後端有回傳錯誤代碼，而且是已知的代碼

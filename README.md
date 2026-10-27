@@ -13,9 +13,22 @@
 
 | 層級 | 技術 |
 | --- | --- |
-| 前端 | Vue 3 |
-| 後端 | ASP.NET Core 10 |
+| 前端 | Vue 3、TypeScript、Vite、Element Plus、Vue Router |
+| 後端 | ASP.NET Core 10 Web API、ADO.NET（Npgsql）、NLog |
 | 資料庫 | PostgreSQL |
+
+### 執行需求
+
+執行前請先安裝以下軟體：
+
+| 軟體 | 版本 | 用途 |
+| --- | --- | --- |
+| [.NET SDK](https://dotnet.microsoft.com/download) | 10.0 | 建置與執行後端 |
+| [Node.js](https://nodejs.org/) | 22.18 以上或 24.12 以上 | 安裝套件與執行前端 |
+| [PostgreSQL](https://www.postgresql.org/download/) | 18 | 資料庫 |
+| [pgAdmin](https://www.pgadmin.org/)（建議） | 隨 PostgreSQL 安裝程式附帶 | 執行 `DB/` 的 SQL 腳本 |
+
+開發時使用的版本：.NET SDK 10.0.402、Node.js 24.22.1、PostgreSQL 18.6。
 
 ## 資料庫 Table 設計
 
@@ -31,7 +44,7 @@
 | 欄位 | 型別 | 說明 |
 |------|------|------|
 | id | INTEGER, PK, IDENTITY | 設備 ID |
-| asset_code | VARCHAR(30), NOT NULL, UNIQUE | 財產編號，只能包含英文大寫、數字和 -；終身唯一（已刪除的設備也不能重複使用） |
+| asset_code | VARCHAR(30), NOT NULL, UNIQUE | 財產編號 |
 | name | VARCHAR(100), NOT NULL | 設備名稱 |
 | equipment_type_id | SMALLINT, NOT NULL, FK → equipment_type | 設備類型 |
 | is_archive | BOOLEAN, NOT NULL, DEFAULT false | 設備是否刪除(軟刪除) |
@@ -52,9 +65,13 @@
 | create_time | TIMESTAMPTZ, NOT NULL, DEFAULT now() | 系統建立紀錄的時間 |
 | update_time | TIMESTAMPTZ, NOT NULL, DEFAULT now() | 更新時間 |
 
-## 如何起動前端、後端、資料庫
+設備和借用紀錄都沒有狀態欄位，狀態由借用紀錄的歸還時間、預計歸還時間即時推算，避免狀態和借用紀錄不一致。
 
-### 資料庫
+## 如何啟動前端、後端、資料庫
+
+請先安裝[執行需求](#執行需求)中的軟體，再依照「資料庫 → 後端 → 前端」的順序啟動。
+
+### 1. 資料庫
 
 SQL 腳本放在 `DB/`：
 
@@ -70,71 +87,71 @@ SQL 腳本放在 `DB/`：
 1. 連上 `postgres` 資料庫，開 Query Tool 執行 `01_create_database.sql`
 2. 切換到 `device_lending` 資料庫，依序執行 `02_ddl.sql` → `03_dml_seed.sql` → `04_procedures.sql`
 
-之後只修改預存程序時，重跑 `04` 即可；想清空資料重新建立，重跑 `02` ～ `04`。
+### 2. 後端
+
+連線字串預設為 `Host=localhost;Port=5432;Database=device_lending;Username=postgres`（`appsettings.json`），**密碼不放在程式碼裡**，開發時用 .NET 的 user-secrets 設定：
+
+```bash
+cd backend/DeviceLending.Api
+
+# 設定連線字串，只需執行一次（請換成自己的 PostgreSQL 密碼；主機、埠號、帳號不同時一併修改）
+dotnet user-secrets set "ConnectionStrings:Default" "Host=localhost;Port=5432;Database=device_lending;Username=postgres;Password=你的密碼"
+
+# 啟動後端
+dotnet run
+```
+
+user-secrets 內建於 .NET SDK，不需另外安裝。也可以改用環境變數設定連線字串（只在目前的終端機視窗有效）：
+
+```
+# Windows PowerShell
+$env:ConnectionStrings__Default = "Host=localhost;Port=5432;Database=device_lending;Username=postgres;Password=你的密碼"
+
+# macOS／Linux
+export ConnectionStrings__Default="Host=localhost;Port=5432;Database=device_lending;Username=postgres;Password=你的密碼"
+
+dotnet run
+```
+
+- 啟動後 API 位於 `http://localhost:5123`
+- 開發環境可開啟 `http://localhost:5123/scalar` 查看與測試所有 API
+- log 檔會寫入 `C:\logs\DeviceLending\`，可在 `appsettings.json` 的 `LogDirectory` 修改
+
+### 3. 前端
+
+另開一個終端機：
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+- 啟動後用瀏覽器開啟 `http://localhost:5173`
 
 ## API 說明
 
-### 類型
+### Type 類型
 
-| Method | URL | 說明 | 資料庫存取 |
+| Method | URL | 用途 | 資料庫存取 |
 |--------|-----|------|------|
 | GET | `/api/Type/Equipment` | 取得所有設備類型 | 後端 SQL |
 
-### 設備
+### Equipment 設備
 
-| Method | URL | 說明 | 資料庫存取 |
+| Method | URL | 用途 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/Equipment` | 查詢設備清單 | 後端 SQL |
+| GET | `/api/Equipment` | 查詢設備清單，可依設備類型（`typeId`）、狀態（`status`：1 可借用、2 借用中、3 逾期）篩選 | 後端 SQL |
 | POST | `/api/Equipment` | 新增設備 | `sp_equipment_create` |
 | PUT | `/api/Equipment/{id}` | 修改設備 | `sp_equipment_update` |
-| DELETE | `/api/Equipment/{id}` | 刪除設備（軟刪除）| `sp_equipment_delete` |
+| DELETE | `/api/Equipment/{id}` | 刪除設備（軟刪除） | `sp_equipment_delete` |
 
-查詢設備清單可帶篩選參數（都可省略），例如 `GET /api/Equipment?typeId=1&status=2`：
+### EquipmentBorrowRecord 借用紀錄
 
-| 參數 | 說明 |
-|------|------|
-| `typeId` | 設備類型 ID |
-| `status` | 設備狀態代碼（見下表） |
-
-設備狀態由借用紀錄推算，資料表沒有狀態欄位：
-
-| 代碼 | 狀態 | 條件 |
-|------|------|------|
-| 1 | 可借用 | 沒有未歸還的借用紀錄 |
-| 2 | 借用中 | 有未歸還的借用紀錄，且尚未超過預計歸還時間 |
-| 3 | 逾期 | 有未歸還的借用紀錄，且已超過預計歸還時間 |
-
-### 借用紀錄
-
-| Method | URL | 說明 | 資料庫存取 |
+| Method | URL | 用途 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/EquipmentBorrowRecord` | 查詢借用歷史 | 後端 SQL |
-| POST | `/api/EquipmentBorrowRecord` | 新增借用紀錄 | `sp_borrow_record_create` |
+| GET | `/api/EquipmentBorrowRecord` | 查詢借用歷史，可依設備（`equipmentId`）、借用人（`borrowerName`）、狀態（`status`：1 借用中、2 逾期、3 已歸還）篩選 | 後端 SQL |
+| POST | `/api/EquipmentBorrowRecord` | 借出設備 | `sp_borrow_record_create` |
 | POST | `/api/EquipmentBorrowRecord/{id}/Return` | 歸還設備 | `sp_borrow_record_return` |
 
-查詢借用歷史可帶篩選參數（都可省略），例如 `GET /api/EquipmentBorrowRecord?equipmentId=1&borrowerName=王&status=2`：
-
-| 參數 | 說明 |
-|------|------|
-| `equipmentId` | 設備 ID |
-| `borrowerName` | 借用人姓名，部分符合即可 |
-| `status` | 借用狀態代碼（見下表） |
-
-借用狀態由歸還時間、預計歸還時間推算，資料表沒有狀態欄位：
-
-| 代碼 | 狀態 | 條件 |
-|------|------|------|
-| 1 | 借用中 | 尚未歸還，且尚未超過預計歸還時間 |
-| 2 | 逾期 | 尚未歸還，且已超過預計歸還時間 |
-| 3 | 已歸還 | 有實際歸還時間 |
-
-新增借用紀錄的 request body：
-
-| 欄位 | 必填 | 說明 |
-|------|------|------|
-| `equipmentId` | 是 | 設備 ID |
-| `borrowerName` | 是 | 借用人姓名，最多 50 字 |
-| `expectReturnTime` | 是 | 預計歸還時間，例如 `2026-11-02T18:00:00+08:00` |
-| `borrowTime` | 否 | 實際借出時間，不傳代表現在 |
-
-歸還設備不需要 request body，歸還時間為呼叫當下。
+完整的參數與 request body 可在後端啟動後開啟 `http://localhost:5123/scalar` 查看。

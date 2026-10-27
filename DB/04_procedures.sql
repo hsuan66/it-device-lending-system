@@ -12,8 +12,8 @@
 --   * 沒有 update_time trigger，UPDATE 時需自行寫入 update_time = now()
 --
 -- 自訂錯誤代碼（SQLSTATE）：U + 4 位數字（U = User-defined）
---   後端把 U 後面的數字當成 errorCode 回傳給前端，並對應 HTTP 狀態碼；
---   錯誤訊息是給開發者看的（會寫進 log），前端依 errorCode 自行顯示給使用者看的訊息
+--   後端把 U 後面的數字當成 code 回傳給前端，並對應 HTTP 狀態碼；
+--   錯誤訊息是給開發者看的（會寫進 log），前端依 code 自行顯示給使用者看的訊息
 --   U1002  必填欄位為空                    → 400
 --   U2001  設備類型不存在                  → 404
 --   U2002  設備不存在或已刪除              → 404
@@ -29,15 +29,8 @@
 
 SET client_encoding = 'UTF8';
 
--- 清除舊版以 FUNCTION 實作的異動程式
-DROP FUNCTION IF EXISTS fn_equipment_create(VARCHAR, VARCHAR, INTEGER);
-DROP FUNCTION IF EXISTS fn_equipment_update(INTEGER, VARCHAR, VARCHAR, INTEGER);
-DROP FUNCTION IF EXISTS fn_equipment_delete(INTEGER);
-DROP FUNCTION IF EXISTS fn_borrow_record_create(INTEGER, VARCHAR, TIMESTAMPTZ, TIMESTAMPTZ);
-DROP FUNCTION IF EXISTS fn_borrow_record_return(INTEGER, TIMESTAMPTZ);
-
 -- -------------------------------------------------------------
--- POST /api/equipment  新增設備
+-- POST /api/Equipment  新增設備
 --   p_id：傳入 NULL，執行後帶回新增的設備 ID
 --   CALL sp_equipment_create('NB-2025-001', 'MacBook Pro', 1, NULL);
 -- -------------------------------------------------------------
@@ -88,7 +81,7 @@ END;
 $$;
 
 -- -------------------------------------------------------------
--- PUT /api/equipment/{id}  修改設備
+-- PUT /api/Equipment/{id}  修改設備
 --   CALL sp_equipment_update(1, 'NB-2024-001', 'ThinkPad T14', 1);
 -- -------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE sp_equipment_update(
@@ -156,7 +149,7 @@ END;
 $$;
 
 -- -------------------------------------------------------------
--- DELETE /api/equipment/{id}  刪除設備（軟刪除）
+-- DELETE /api/Equipment/{id}  刪除設備（軟刪除）
 --   借用中的設備不可刪除；歷史借用紀錄保留不動
 --   CALL sp_equipment_delete(1);
 -- -------------------------------------------------------------
@@ -199,7 +192,7 @@ END;
 $$;
 
 -- -------------------------------------------------------------
--- POST /api/equipment/borrowRecord  新增借用紀錄
+-- POST /api/EquipmentBorrowRecord  新增借用紀錄
 --   p_borrow_time：傳 NULL 時以目前時間為借出時間
 --   p_id：傳入 NULL，執行後帶回新增的借用紀錄 ID
 --   CALL sp_borrow_record_create(1, '王小明', now() + interval '7 days', NULL, NULL);
@@ -259,7 +252,7 @@ END;
 $$;
 
 -- -------------------------------------------------------------
--- POST /api/equipment/borrowRecords/{id}/return  歸還設備
+-- POST /api/EquipmentBorrowRecord/{id}/Return  歸還設備
 --   p_return_time：傳 NULL 時以目前時間為歸還時間，執行後帶回實際歸還時間
 --   CALL sp_borrow_record_return(1, NULL);
 -- -------------------------------------------------------------

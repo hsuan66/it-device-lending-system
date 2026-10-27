@@ -12,8 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 // RemoveLoggerFactoryFilter = false：讓 NLog 也套用上面 appsettings 的等級設定，開發與正式環境才會不同
 builder.Host.UseNLog(new NLogAspNetCoreOptions { RemoveLoggerFactoryFilter = false });
 
-// Add services to the container.
-
 // 資料庫連線：開發時從 user-secrets 讀取，正式環境從環境變數讀取
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException("找不到連線字串 ConnectionStrings:Default");
@@ -41,10 +39,11 @@ builder.Services.AddScoped<IEquipmentBorrowRecordService, EquipmentBorrowRecordS
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
         options.InvalidModelStateResponseFactory = ValidationErrorResponse.Create);
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+// OpenAPI 文件，開發環境搭配 Scalar 測試頁使用
 builder.Services.AddOpenApi();
 
-// 新增：允許 Vue 開發伺服器跨來源呼叫 API
+// 允許 Vue 開發伺服器跨來源呼叫 API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -59,16 +58,16 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-// Configure the HTTP request pipeline.
+// 開發環境才開放 OpenAPI 文件與 API 測試頁 /scalar
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference(); // 新增：API 測試頁 /scalar
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
 
-app.UseCors("Frontend"); // 新增
+app.UseCors("Frontend");
 
 app.UseAuthorization();
 

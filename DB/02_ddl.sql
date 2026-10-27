@@ -12,21 +12,10 @@ COMMENT ON DATABASE device_lending IS 'IT 設備借用系統';
 -- 預設時區設為台北，TIMESTAMPTZ 顯示時會轉為 +08:00（重新連線後生效）
 ALTER DATABASE device_lending SET timezone TO 'Asia/Taipei';
 
--- 清除舊版物件（舊版曾建立查詢用的 view、function 與 update_time trigger）
-DROP FUNCTION IF EXISTS fn_equipment_type_list();
-DROP FUNCTION IF EXISTS fn_equipment_list(INTEGER, VARCHAR);
-DROP FUNCTION IF EXISTS fn_equipment_get(INTEGER);
-DROP FUNCTION IF EXISTS fn_borrow_record_list(INTEGER, VARCHAR, VARCHAR);
-DROP FUNCTION IF EXISTS fn_borrow_record_get(INTEGER);
-DROP VIEW     IF EXISTS v_borrow_record CASCADE;
-DROP VIEW     IF EXISTS v_equipment     CASCADE;
-
 -- 刪除資料表（先刪參照別人的，再刪被參照的）
 DROP TABLE IF EXISTS borrow_record  CASCADE;
 DROP TABLE IF EXISTS equipment      CASCADE;
 DROP TABLE IF EXISTS equipment_type CASCADE;
-
-DROP FUNCTION IF EXISTS trg_set_update_time() CASCADE;
 
 -- -------------------------------------------------------------
 -- equipment_type 設備類型

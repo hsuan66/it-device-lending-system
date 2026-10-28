@@ -56,6 +56,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 安全性回應標頭（nosniff、CSP），放在最前面，所有回應（含錯誤回應）都會帶到
+app.UseSecurityHeaders();
+
 app.UseExceptionHandler();
 
 // 開發環境才開放 OpenAPI 文件與 API 測試頁 /scalar

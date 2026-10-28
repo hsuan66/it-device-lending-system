@@ -11,4 +11,7 @@ public class GetEquipmentRequest
     // 不在 EquipmentStatus 裡的數字（例如 9）會回 400
     [EnumDataType(typeof(EquipmentStatus))]
     public EquipmentStatus? Status { get; init; }
+
+    // 是否一併列出已刪除的設備，預設不列出；借用紀錄頁的設備篩選需要包含已刪除的設備
+    public bool IncludeArchived { get; init; }
 }

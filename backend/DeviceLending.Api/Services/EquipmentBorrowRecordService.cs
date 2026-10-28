@@ -34,8 +34,7 @@ public class EquipmentBorrowRecordService(IEquipmentBorrowRecordRepository repos
     {
         // ExpectReturnTime 有 [Required]，通過模型驗證後一定有值
         return repository.CreateAsync(
-            request.EquipmentId, request.BorrowerName, request.ExpectReturnTime!.Value, request.BorrowTime,
-            cancellationToken);
+            request.EquipmentId, request.BorrowerName, request.ExpectReturnTime!.Value, cancellationToken);
     }
 
     public Task ReturnAsync(int id, CancellationToken cancellationToken)

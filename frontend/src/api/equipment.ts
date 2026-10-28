@@ -2,9 +2,9 @@ import { http, toQueryString } from './http'
 import type { Equipment, EquipmentForm, EquipmentQuery } from '@/types/equipment'
 
 /**
- * 查詢設備清單，不含已刪除的設備
- * @param query 篩選條件（類型、狀態），不傳代表不篩選
- * @returns 設備清單，依 id 排序
+ * 查詢設備清單，預設不含已刪除的設備
+ * @param query 篩選條件（類型、狀態、是否包含已刪除的設備），不傳代表不篩選
+ * @returns 設備清單，依 id 排序；包含已刪除的設備時，已刪除的排在最後
  */
 export function getEquipmentList(query: EquipmentQuery = {}) {
   return http<Equipment[]>(`/Equipment${toQueryString(query)}`)

@@ -11,8 +11,8 @@ export function getBorrowRecordList(query: BorrowRecordQuery = {}) {
 }
 
 /**
- * 新增借用紀錄
- * @param form 設備、借用人、預計歸還時間、借出時間（不填代表現在）
+ * 新增借用紀錄，借出時間為呼叫當下
+ * @param form 設備、借用人、預計歸還時間
  * @returns 沒有內容；設備借用中時丟出 409、時間不合理時丟出 400 的 ApiError
  */
 export function createBorrowRecord(form: BorrowRecordForm) {

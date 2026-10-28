@@ -15,7 +15,7 @@ import { toErrorMessage } from '@/utils/error'
 import { hasFilterValue } from '@/utils/filter'
 
 /**
- * 設備下拉選單的選項，從設備清單取得（不含已刪除的設備）
+ * 設備下拉選單的選項，從設備清單取得；包含已刪除的設備，才能查詢它們的借用歷史
  */
 const equipmentOptions = ref<Equipment[]>([])
 
@@ -89,7 +89,7 @@ const pagedBorrowRecordList = computed(() => {
  */
 async function loadEquipmentOptions() {
   try {
-    equipmentOptions.value = await getEquipmentList()
+    equipmentOptions.value = await getEquipmentList({ includeArchived: true })
   } catch (error) {
     ElMessage.error(toErrorMessage(error))
   }
@@ -180,7 +180,7 @@ onMounted(() => {
     <!-- 篩選條件：按 Enter 或「查詢」都會重新載入 -->
     <el-form :model="query" inline class="filter-form" @submit.prevent="loadBorrowRecordList()">
       <el-form-item label="設備">
-        <!-- filterable：可以輸入財產編號或名稱快速找到設備 -->
+        <!-- filterable：可以輸入財產編號或名稱快速找到設備；已刪除的設備排在最後，名稱後面標示「（已刪除）」 -->
         <el-select
           v-model="query.equipmentId"
           placeholder="全部"
@@ -191,7 +191,7 @@ onMounted(() => {
           <el-option
             v-for="equipment in equipmentOptions"
             :key="equipment.id"
-            :label="`${equipment.assetCode} ${equipment.name}`"
+            :label="`${equipment.assetCode} ${equipment.name}${equipment.isArchive ? '（已刪除）' : ''}`"
             :value="equipment.id"
           />
         </el-select>

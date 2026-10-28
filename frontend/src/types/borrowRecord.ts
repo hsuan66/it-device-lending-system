@@ -47,11 +47,10 @@ export interface BorrowRecordQuery {
 }
 
 /**
- * 新增借用紀錄 API 送出的資料
+ * 新增借用紀錄 API 送出的資料；借出時間由後端以目前時間寫入
  */
 export interface BorrowRecordForm {
   equipmentId: number
   borrowerName: string
   expectReturnTime: string
-  borrowTime?: string
 }

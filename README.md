@@ -115,7 +115,7 @@ dotnet run
 
 - 啟動後 API 位於 `http://localhost:5123`
 - 開發環境可開啟 `http://localhost:5123/scalar` 查看與測試所有 API
-- log 檔會寫入 `C:\logs\DeviceLending\`，可在 `appsettings.json` 的 `LogDirectory` 修改
+- log 檔預設寫入執行目錄下的 `logs/`（`dotnet run` 時為 `bin/Debug/net10.0/logs/`），可在 `appsettings.json` 的 `LogDirectory` 改成其他資料夾
 
 ### 3. 前端
 
@@ -141,7 +141,7 @@ npm run dev
 
 | Method | URL | 用途 | 資料庫存取 |
 |--------|-----|------|------|
-| GET | `/api/Equipment` | 查詢設備清單，可依設備類型（`typeId`）、狀態（`status`：1 可借用、2 借用中、3 逾期）篩選 | 後端 SQL |
+| GET | `/api/Equipment` | 查詢設備清單，可依設備類型（`typeId`）、狀態（`status`：1 借用中、2 逾期、3 可借用）篩選；預設不含已刪除的設備，帶 `includeArchived=true` 可一併列出 | 後端 SQL |
 | POST | `/api/Equipment` | 新增設備 | `sp_equipment_create` |
 | PUT | `/api/Equipment/{id}` | 修改設備 | `sp_equipment_update` |
 | DELETE | `/api/Equipment/{id}` | 刪除設備（軟刪除） | `sp_equipment_delete` |

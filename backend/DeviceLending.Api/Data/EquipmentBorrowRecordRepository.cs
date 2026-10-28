@@ -11,8 +11,7 @@ public interface IEquipmentBorrowRecordRepository
         int? equipmentId, string? borrowerName, BorrowRecordStatus? status, CancellationToken cancellationToken);
 
     Task CreateAsync(
-        int equipmentId, string borrowerName, DateTimeOffset expectReturnTime, DateTimeOffset? borrowTime,
-        CancellationToken cancellationToken);
+        int equipmentId, string borrowerName, DateTimeOffset expectReturnTime, CancellationToken cancellationToken);
 
     Task ReturnAsync(int id, CancellationToken cancellationToken);
 }
@@ -101,12 +100,11 @@ public class EquipmentBorrowRecordRepository(NpgsqlDataSource dataSource) : IEqu
     }
 
     public async Task CreateAsync(
-        int equipmentId, string borrowerName, DateTimeOffset expectReturnTime, DateTimeOffset? borrowTime,
-        CancellationToken cancellationToken)
+        int equipmentId, string borrowerName, DateTimeOffset expectReturnTime, CancellationToken cancellationToken)
     {
-        // 第 4 個參數 p_borrow_time 傳 NULL 代表現在；最後一個是 INOUT p_id，簽章需要所以傳 NULL，帶回的 ID 不使用
+        // 借出時間由預存程序以目前時間寫入；最後一個是 INOUT p_id，簽章需要所以傳 NULL，帶回的 ID 不使用
         const string sql =
-            "CALL sp_borrow_record_create(@equipment_id, @borrower_name, @expect_return_time, @borrow_time, NULL)";
+            "CALL sp_borrow_record_create(@equipment_id, @borrower_name, @expect_return_time, NULL)";
 
         await using var command = dataSource.CreateCommand(sql);
         command.Parameters.AddWithValue("equipment_id", equipmentId);
@@ -116,10 +114,6 @@ public class EquipmentBorrowRecordRepository(NpgsqlDataSource dataSource) : IEqu
         command.Parameters.Add(new NpgsqlParameter("expect_return_time", NpgsqlDbType.TimestampTz)
         {
             Value = expectReturnTime.ToUniversalTime()
-        });
-        command.Parameters.Add(new NpgsqlParameter("borrow_time", NpgsqlDbType.TimestampTz)
-        {
-            Value = borrowTime is null ? DBNull.Value : borrowTime.Value.ToUniversalTime()
         });
 
         await command.ExecuteNonQueryAsync(cancellationToken);

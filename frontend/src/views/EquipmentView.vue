@@ -22,7 +22,7 @@ import { hasFilterValue } from '@/utils/filter'
 const equipmentTypes = ref<EquipmentType[]>([])
 
 /**
- * 設備狀態下拉選單的選項：可借用、借用中、逾期
+ * 設備狀態下拉選單的選項：借用中、逾期、可借用
  */
 const statusOptions = Object.values(EquipmentStatus).map((value) => ({
   value,
@@ -30,21 +30,21 @@ const statusOptions = Object.values(EquipmentStatus).map((value) => ({
 }))
 
 /**
- * 設備狀態對應的標籤顏色：可借用綠色、借用中藍色、逾期紅色
+ * 設備狀態對應的標籤顏色：借用中藍色、逾期紅色、可借用綠色
  */
 const statusTagTypes: Record<EquipmentStatus, 'success' | 'primary' | 'danger'> = {
-  1: 'success',
-  2: 'primary',
-  3: 'danger',
+  1: 'primary',
+  2: 'danger',
+  3: 'success',
 }
 
 /**
  * 「借用」按鈕停用時 tooltip 顯示的原因；可借用時 tooltip 不顯示，所以留空
  */
 const borrowDisabledReasons: Record<EquipmentStatus, string> = {
-  1: '',
-  2: '設備借用中，無法借出',
-  3: '設備逾期未還，無法借出',
+  1: '設備借用中，無法借出',
+  2: '設備逾期未還，無法借出',
+  3: '',
 }
 
 /**

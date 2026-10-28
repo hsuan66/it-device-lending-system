@@ -17,12 +17,13 @@ public class EquipmentService(IEquipmentRepository repository) : IEquipmentServi
     public async Task<IReadOnlyList<GetEquipmentResponse>> GetListAsync(
         GetEquipmentRequest query, CancellationToken cancellationToken)
     {
-        var items = await repository.GetListAsync(query.TypeId, query.Status, cancellationToken);
+        var items = await repository.GetListAsync(
+            query.TypeId, query.Status, query.IncludeArchived, cancellationToken);
 
         // Entity 轉成 DTO
         return items
             .Select(e => new GetEquipmentResponse(
-                e.Id, e.AssetCode, e.Name, e.EquipmentTypeId, e.EquipmentTypeName, e.Status))
+                e.Id, e.AssetCode, e.Name, e.EquipmentTypeId, e.EquipmentTypeName, e.Status, e.IsArchive))
             .ToList();
     }
 
